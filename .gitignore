@@ -1,0 +1,61 @@
+syntax: glob
+
+# project specific
+
+# esf
+
+bld/**
+atf/.cre
+tst/d/o/**
+npm.upd.sh
+
+# web
+
+.well-known
+
+# common
+
+.package.bkp.json
+
+# common
+
+.mat
+.cre
+.directory
+.dld
+.idea
+.vscode
+.pcs
+.run
+.tmp
+.tst
+.maps
+build/Release
+logs
+nbproject
+node_modules
+pids
+
+~*
+
+nohup.out
+
+*.gz
+*.rar
+*.tar
+*.zip
+
+*.log
+*.pid
+*.seed
+
+tst/ut-cov
+tst/basic-cocomo-*
+lcov.info
+lib-cov
+coverage
+
+.grunt
+.lock-wscript
+desktop.ini
+thumbs.db
