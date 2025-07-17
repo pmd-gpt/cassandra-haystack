@@ -5,13 +5,14 @@ setup(
     version="0.1.0",
     packages=find_packages(),
     install_requires=[
-        "haystack-ai>=2.13.2",           # новое название пакета
+        "haystack-ai>=2.13.2",         
         "cassandra-driver>=3.29.2"
+        "pydantic>=2.11.7"
     ],
-    author="Ваше имя",
-    author_email="your.email@example.com",
+    author="Gleb Ivanov",
+    author_email="rvn17cj@gmail.com",
     description="Cassandra integration for Haystack AI with ANN vector search via SAI (Cassandra 5.0+)",
-    url="https://github.com/yourname/haystack-ai-cassandra",  # заменить на реальный репозиторий
+    url="https://github.com/pmd-gpt/cassandra-haystack",  
     classifiers=[
         "Programming Language :: Python :: 3",
         "Operating System :: OS Independent",
