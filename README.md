@@ -17,6 +17,7 @@ A plug-in document store for [`haystack-ai`](https://github.com/deepset-ai/hayst
 - Python 3.8+
 - `cassandra-driver`
 - `haystack-ai>=1.0.0`
+- `pydantic>=2.0`
 
 ## 📦 Installation
 
