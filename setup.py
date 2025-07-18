@@ -6,7 +6,7 @@ setup(
     packages=find_packages(),
     install_requires=[
         "haystack-ai>=2.13.2",         
-        "cassandra-driver>=3.29.2"
+        "cassandra-driver>=3.29.2",
         "pydantic>=2.11.7"
     ],
     author="Gleb Ivanov",
