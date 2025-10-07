@@ -1,5 +1,4 @@
 import uuid
-import time
 from typing import List, Dict, Any
 
 from cassandra.cluster import Cluster
@@ -13,40 +12,52 @@ class CassandraDocumentStore(DocumentStore):
         self,
         host: List[str] = ["localhost"],
         port: int = 9042,
-        embedding_dim: int = 1024,
+        embedding_dim: int = 384,
         keyspace: str = "haystack",
-        table: str = "document"
-    ):
-        time.sleep(15)
-
-        self.cluster = Cluster(host, port=port, load_balancing_policy=DCAwareRoundRobinPolicy())
+        table: str = "document",
+        index_name: str = "embedding_ann_index",
+        protocol_ver: int = 5,
+    ) -> None:
+        self.cluster = Cluster(
+            host,
+            port=port,
+            load_balancing_policy=DCAwareRoundRobinPolicy(),
+            protocol_version=protocol_ver,
+        )
         self.session = self.cluster.connect()
 
         self.keyspace = keyspace
         self.table = table
+        self.index_name = index_name
 
-        self.session.execute(f"""
+        self.session.execute(
+            f"""
             CREATE KEYSPACE IF NOT EXISTS {self.keyspace}
             WITH replication = {{'class': 'SimpleStrategy', 'replication_factor': 1}}
-        """)
+        """
+        )
 
         self.session.set_keyspace(self.keyspace)
 
-        self.session.execute(f"""
+        self.session.execute(
+            f"""
             CREATE TABLE IF NOT EXISTS {self.table} (
                 id text PRIMARY KEY,
                 embedding vector<float, {embedding_dim}>,
                 meta map<text, text>,
                 content text
             )
-        """)
+            """
+        )
 
-        self.session.execute(f"""
-            CREATE CUSTOM INDEX IF NOT EXISTS embedding_ann_index
-            ON {self.table} (embedding)
-            USING 'sai'
-            WITH OPTIONS = {{'similarity_function': 'cosine'}}
-        """)
+        self.session.execute(
+            f"""
+            CREATE INDEX IF NOT EXISTS {self.index_name}
+                ON {self.table} (embedding)
+                USING 'StorageAttachedIndex'
+                WITH OPTIONS = {{'similarity_function': 'cosine'}}
+            """
+        )
 
     def write_documents(self, documents: List[Document]) -> int:
         count = 0
@@ -57,57 +68,67 @@ class CassandraDocumentStore(DocumentStore):
                 INSERT INTO {self.table} (id, embedding, meta, content)
                 VALUES (%s, %s, %s, %s)
                 """,
-                [doc.id or str(uuid.uuid4()), doc.embedding, meta, doc.content]
+                [doc.id or str(uuid.uuid4()), doc.embedding, meta, doc.content],
             )
             count += 1
         return count
-    
-    def query_by_embedding(self, embedding: List[float], top_k: int = 5) -> List[Document]:
-        rows = self.session.execute(
-            f"""
+
+    def query_by_embedding(
+        self, embedding: List[float], top_k: int = 5
+    ) -> List[Document]:
+        embedding_literal = "[" + ", ".join(f"{x:.6f}" for x in embedding) + "]"
+
+        query = f"""
             SELECT id, content, meta, embedding FROM {self.table}
-            ORDER BY embedding ANN OF %s
-            LIMIT %s
-            """,
-            [embedding, top_k]
-        )
+            ORDER BY embedding ANN OF {embedding_literal}
+            LIMIT {top_k}
+        """
+
+        rows = self.session.execute(query)
+
         return [
             Document(
                 id=row.id,
                 content=row.content,
                 meta=dict(row.meta) if row.meta else {},
-                embedding=row.embedding
-            ) for row in rows
+                embedding=row.embedding,
+            )
+            for row in rows
         ]
 
     def get_document_by_id(self, document_id: str) -> Document:
         row = self.session.execute(
             f"SELECT id, content, meta, embedding FROM {self.table} WHERE id = %s",
-            [document_id]
+            [document_id],
         ).one()
         if row:
             return Document(
                 id=row.id,
                 content=row.content,
                 meta=dict(row.meta) if row.meta else {},
-                embedding=row.embedding
+                embedding=row.embedding,
             )
         return None
-    
+
     def get_documents_by_id(self, ids: List[str]) -> List[Document]:
-        return [doc for doc in (self.get_document_by_id(doc_id) for doc_id in ids) if doc]
+        return [
+            doc for doc in (self.get_document_by_id(doc_id) for doc_id in ids) if doc
+        ]
 
     def get_all_documents(self) -> List[Document]:
-        rows = self.session.execute(f"SELECT id, content, meta, embedding FROM {self.table}")
+        rows = self.session.execute(
+            f"SELECT id, content, meta, embedding FROM {self.table}"
+        )
         return [
             Document(
                 id=row.id,
                 content=row.content,
                 meta=dict(row.meta) if row.meta else {},
-                embedding=row.embedding
-            ) for row in rows
+                embedding=row.embedding,
+            )
+            for row in rows
         ]
-    
+
     def delete_documents(self, document_ids: List[str]) -> Dict[str, Any]:
         deleted_ids = []
         not_found_ids = []
@@ -125,7 +146,7 @@ class CassandraDocumentStore(DocumentStore):
         return {
             "deleted_count": len(deleted_ids),
             "deleted_ids": deleted_ids,
-            "not_found_ids": not_found_ids
+            "not_found_ids": not_found_ids,
         }
 
     def delete_all_documents(self) -> None:

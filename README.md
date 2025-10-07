@@ -38,7 +38,8 @@ store = CassandraDocumentStore(
     host=["localhost"],
     keyspace="haystack",
     table="document",
-    embedding_dim=1024
+    index_name="doc_ind",
+    embedding_dim=1024,
 )
 
 store.write_documents([
@@ -47,3 +48,4 @@ store.write_documents([
 
 results = store.query_by_embedding([0.1] * 1024, top_k=1)
 print(results[0].content)
+```
